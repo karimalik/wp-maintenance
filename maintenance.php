@@ -7,7 +7,10 @@ Author: NYX-EI <help@nyx-ei.tech>
 */
 
 function nyx_ei_maintenance_mode() {
-    if (!current_user_can('edit_themes') || !is_user_logged_in()) {
+    if (!current_user_can('manage_options') && !is_user_logged_in()) {
+        header($_SERVER["SERVER_PROTOCOL"] . " 503 Service Unavailable");
+        header("Retry-After: 3600"); // Demande aux moteurs de recherche de revenir plus tard
+        
         wp_die(
             '<!DOCTYPE html>
             <html lang="fr">
@@ -15,12 +18,11 @@ function nyx_ei_maintenance_mode() {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Maintenance - NYX-EI</title>
-                <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
                 <style>
                     body {
                         background-color: #1a1a1a;
                         color: #ffffff;
-                        font-family: "Montserrat", Arial, sans-serif;
+                        font-family: Arial, sans-serif;
                         display: flex;
                         justify-content: center;
                         align-items: center;
@@ -30,33 +32,26 @@ function nyx_ei_maintenance_mode() {
                     }
                     .maintenance-container {
                         max-width: 600px;
-                        padding: 40px;
+                        padding: 20px;
                         background-color: #2a2a2a;
                         border-radius: 10px;
                         box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
                     }
                     .logo {
                         max-width: 150px;
-                        margin-bottom: 30px;
+                        margin-bottom: 20px;
                     }
                     h1 {
                         font-size: 2.5em;
                         margin-bottom: 20px;
-                        color: #A6242F;
-                        font-weight: 700;
                     }
                     p {
                         font-size: 1.2em;
                         margin-bottom: 20px;
-                        line-height: 1.6;
                     }
                     .contact-info {
                         font-size: 1em;
-                        margin-top: 30px;
-                        color: #cccccc;
-                    }
-                    .contact-info p {
-                        margin: 10px 0;
+                        margin-top: 20px;
                     }
                 </style>
             </head>
@@ -78,4 +73,4 @@ function nyx_ei_maintenance_mode() {
         );
     }
 }
-add_action('get_header', 'nyx_ei_maintenance_mode');
+add_action('init', 'nyx_ei_maintenance_mode');
