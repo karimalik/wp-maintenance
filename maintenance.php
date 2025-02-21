@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: NYX-EI Maintenance Mode
+Plugin Name: NYX-EI Maintenance
 Description: Active un mode maintenance avec une page personnalisée.
 Version: 1.1
 Author: NYX-EI
