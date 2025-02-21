@@ -14,19 +14,40 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Définir le chemin du plugin
+define('NYX_MAINTENANCE_PATH', plugin_dir_path(__FILE__));
+define('NYX_MAINTENANCE_URL', plugin_dir_url(__FILE__));
+
 class NyxMaintenanceMode {
     
     // Constructeur
     public function __construct() {
         add_action('admin_menu', array($this, 'add_plugin_page'));
         add_action('admin_init', array($this, 'page_init'));
-        add_action('wp_loaded', array($this, 'maintenance_mode'));
+        add_action('template_redirect', array($this, 'maintenance_mode'));
         
         // Ajouter le lien "Paramètres" sur la page des plugins
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'add_settings_link'));
         
         // Enregistrer les styles et scripts
         add_action('wp_enqueue_scripts', array($this, 'enqueue_styles'));
+        add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
+        
+        // Créer le dossier uploads s'il n'existe pas
+        $this->create_upload_directory();
+        
+        // Ajout de l'action pour l'upload du logo
+        add_action('wp_ajax_nyx_upload_logo', array($this, 'handle_logo_upload'));
+    }
+    
+    // Création du dossier d'upload
+    private function create_upload_directory() {
+        $upload_dir = wp_upload_dir();
+        $nyx_upload_dir = $upload_dir['basedir'] . '/nyx-maintenance';
+        
+        if (!file_exists($nyx_upload_dir)) {
+            wp_mkdir_p($nyx_upload_dir);
+        }
     }
     
     // Lien vers paramètres dans la liste des plugins
@@ -256,11 +277,26 @@ class NyxMaintenanceMode {
     
     public function logo_callback() {
         $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        $logo_url = esc_attr($options['logo']);
+        
+        echo '<div class="logo-upload-container">';
         printf(
             '<input type="text" class="regular-text" id="logo" name="nyx_maintenance_option[logo]" value="%s" />',
-            esc_attr($options['logo'])
+            $logo_url
         );
-        echo '<p class="description">URL complète du logo</p>';
+        echo '<button id="upload_logo_button" class="button">Sélectionner une image</button>';
+        echo '<p class="description">Sélectionnez ou uploadez une image pour le logo</p>';
+        
+        if (!empty($logo_url)) {
+            echo '<div class="logo-preview" style="margin-top: 10px;">';
+            echo '<img id="logo_preview" src="' . $logo_url . '" style="max-width: 200px; height: auto;" />';
+            echo '</div>';
+        } else {
+            echo '<div class="logo-preview" style="margin-top: 10px;">';
+            echo '<img id="logo_preview" src="" style="max-width: 200px; height: auto; display: none;" />';
+            echo '</div>';
+        }
+        echo '</div>';
     }
     
     public function logo_width_callback() {
@@ -325,6 +361,93 @@ class NyxMaintenanceMode {
     public function enqueue_styles() {
         if ($this->is_maintenance_active()) {
             wp_enqueue_style('google-font-montserrat', 'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap', array(), null);
+        }
+    }
+    
+    // Enregistrer les scripts et styles d'admin
+    public function admin_enqueue_scripts($hook) {
+        if ($hook === 'settings_page_nyx-maintenance') {
+            wp_enqueue_media();
+            wp_enqueue_style('wp-color-picker');
+            wp_enqueue_script('wp-color-picker');
+            
+            wp_enqueue_script(
+                'nyx-maintenance-admin', 
+                NYX_MAINTENANCE_URL . 'admin.js', 
+                array('jquery', 'wp-color-picker', 'media-upload'), 
+                time(), 
+                true
+            );
+            
+            // Créer le fichier JS si nécessaire
+            $this->create_admin_js_file();
+        }
+    }
+    
+    // Créer le fichier JavaScript d'administration
+    private function create_admin_js_file() {
+        $js_file = NYX_MAINTENANCE_PATH . 'admin.js';
+        
+        if (!file_exists($js_file)) {
+            $js_content = '
+jQuery(document).ready(function($) {
+    // Initialiser le color picker
+    $(".color-picker").wpColorPicker();
+    
+    // Gestion de l\'upload du logo
+    $("#upload_logo_button").on("click", function(e) {
+        e.preventDefault();
+        var custom_uploader = wp.media({
+            title: "Sélectionner une image pour le logo",
+            button: {
+                text: "Utiliser cette image"
+            },
+            multiple: false
+        })
+        .on("select", function() {
+            var attachment = custom_uploader.state().get("selection").first().toJSON();
+            $("#logo").val(attachment.url);
+            $("#logo_preview").attr("src", attachment.url).show();
+        })
+        .open();
+    });
+    
+    // Afficher ou masquer l\'aperçu du logo
+    if($("#logo").val()) {
+        $("#logo_preview").attr("src", $("#logo").val()).show();
+    } else {
+        $("#logo_preview").hide();
+    }
+});';
+            file_put_contents($js_file, $js_content);
+        }
+    }
+    
+    // Gérer l'upload du logo
+    public function handle_logo_upload() {
+        check_ajax_referer('nyx_maintenance_nonce', 'security');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permissions insuffisantes');
+        }
+        
+        if (!isset($_FILES['file'])) {
+            wp_send_json_error('Aucun fichier reçu');
+        }
+        
+        $upload_dir = wp_upload_dir();
+        $upload_path = $upload_dir['basedir'] . '/nyx-maintenance/';
+        $upload_url = $upload_dir['baseurl'] . '/nyx-maintenance/';
+        
+        $file_name = sanitize_file_name($_FILES['file']['name']);
+        $destination = $upload_path . $file_name;
+        
+        if (move_uploaded_file($_FILES['file']['tmp_name'], $destination)) {
+            wp_send_json_success(array(
+                'url' => $upload_url . $file_name
+            ));
+        } else {
+            wp_send_json_error('Erreur lors de l\'upload du fichier');
         }
     }
     
