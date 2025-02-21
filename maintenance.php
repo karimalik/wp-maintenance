@@ -1,82 +1,657 @@
 <?php
-/*
-Plugin Name: NYX-EI Maintenance
-Description: Active un mode maintenance avec une page personnalisée.
-Version: 1.2
-Author: NYX-EI
-*/
+/**
+ * Plugin Name: NYX-EI Maintenance
+ * Plugin URI: https://nyx-ei.tech
+ * Description: Un plugin de maintenance élégant pour NYX-EI
+ * Version: 1.0
+ * Author: NYX-EI
+ * Author URI: https://nyx-ei.tech
+ * Text Domain: nyx-maintenance
+ */
 
-function nyx_ei_maintenance_mode() {
-    if (!current_user_can('manage_options') && !is_user_logged_in()) {
-        header($_SERVER["SERVER_PROTOCOL"] . " 503 Service Unavailable");
-        header("Retry-After: 3600");
+// Si ce fichier est appelé directement, on sort
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class NyxMaintenanceMode {
+    
+    // Constructeur
+    public function __construct() {
+        add_action('admin_menu', array($this, 'add_plugin_page'));
+        add_action('admin_init', array($this, 'page_init'));
+        add_action('wp_loaded', array($this, 'maintenance_mode'));
         
-        echo '<!DOCTYPE html>
+        // Ajouter le lien "Paramètres" sur la page des plugins
+        add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'add_settings_link'));
+        
+        // Enregistrer les styles et scripts
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_styles'));
+    }
+    
+    // Lien vers paramètres dans la liste des plugins
+    public function add_settings_link($links) {
+        $settings_link = '<a href="options-general.php?page=nyx-maintenance">' . __('Paramètres', 'nyx-maintenance') . '</a>';
+        array_unshift($links, $settings_link);
+        return $links;
+    }
+    
+    // Ajouter la page de menu
+    public function add_plugin_page() {
+        add_options_page(
+            'Mode Maintenance NYX-EI', 
+            'Maintenance NYX-EI', 
+            'manage_options', 
+            'nyx-maintenance', 
+            array($this, 'create_admin_page')
+        );
+    }
+    
+    // Options par défaut
+    private function get_default_options() {
+        return array(
+            'enabled' => 0,
+            'title' => 'We Are Coming Soon',
+            'description' => 'We\'re strong believers that the best solutions come from gathering new insights and pushing conventional boundaries.',
+            'date' => '',
+            'logo' => '',
+            'logo_width' => '150',
+            'primary_color' => '#A6242F',
+            'email' => 'contact@nyx-ei.tech',
+            'phone' => '+237 697 99 15 90',
+            'address' => 'B.P 17623 Yaoundé',
+            'allowed_ips' => '',
+            'exclude_urls' => ''
+        );
+    }
+    
+    // Créer la page d'administration
+    public function create_admin_page() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        ?>
+        <div class="wrap">
+            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            <form method="post" action="options.php">
+                <?php
+                settings_fields('nyx_maintenance_option_group');
+                do_settings_sections('nyx-maintenance-admin');
+                submit_button();
+                ?>
+            </form>
+        </div>
+        <?php
+    }
+    
+    // Initialiser les paramètres
+    public function page_init() {
+        register_setting(
+            'nyx_maintenance_option_group',
+            'nyx_maintenance_option',
+            array($this, 'sanitize')
+        );
+        
+        add_settings_section(
+            'nyx_maintenance_setting_section',
+            'Paramètres du mode maintenance',
+            array($this, 'section_info'),
+            'nyx-maintenance-admin'
+        );
+        
+        add_settings_field(
+            'enabled',
+            'Activer le mode maintenance',
+            array($this, 'enabled_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'title',
+            'Titre',
+            array($this, 'title_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'description',
+            'Description',
+            array($this, 'description_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'date',
+            'Date de lancement (laisser vide pour désactiver le compte à rebours)',
+            array($this, 'date_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'logo',
+            'URL du logo',
+            array($this, 'logo_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'logo_width',
+            'Largeur du logo (px)',
+            array($this, 'logo_width_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'primary_color',
+            'Couleur principale',
+            array($this, 'primary_color_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'email',
+            'Email de contact',
+            array($this, 'email_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'phone',
+            'Téléphone',
+            array($this, 'phone_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'address',
+            'Adresse',
+            array($this, 'address_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'allowed_ips',
+            'IPs autorisées (séparées par des virgules)',
+            array($this, 'allowed_ips_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
+        add_settings_field(
+            'exclude_urls',
+            'URLs à exclure (une par ligne)',
+            array($this, 'exclude_urls_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+    }
+    
+    // Sanitize des données
+    public function sanitize($input) {
+        $sanitized = array();
+        $default_options = $this->get_default_options();
+        
+        $sanitized['enabled'] = isset($input['enabled']) ? 1 : 0;
+        $sanitized['title'] = sanitize_text_field($input['title'] ?: $default_options['title']);
+        $sanitized['description'] = sanitize_textarea_field($input['description'] ?: $default_options['description']);
+        $sanitized['date'] = sanitize_text_field($input['date']);
+        $sanitized['logo'] = esc_url_raw($input['logo']);
+        $sanitized['logo_width'] = absint($input['logo_width'] ?: $default_options['logo_width']);
+        $sanitized['primary_color'] = sanitize_hex_color($input['primary_color'] ?: $default_options['primary_color']);
+        $sanitized['email'] = sanitize_email($input['email'] ?: $default_options['email']);
+        $sanitized['phone'] = sanitize_text_field($input['phone'] ?: $default_options['phone']);
+        $sanitized['address'] = sanitize_text_field($input['address'] ?: $default_options['address']);
+        $sanitized['allowed_ips'] = sanitize_text_field($input['allowed_ips']);
+        $sanitized['exclude_urls'] = sanitize_textarea_field($input['exclude_urls']);
+        
+        return $sanitized;
+    }
+    
+    // Info Section
+    public function section_info() {
+        echo 'Configurez le mode maintenance de votre site';
+    }
+    
+    // Callbacks des champs
+    public function enabled_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="checkbox" id="enabled" name="nyx_maintenance_option[enabled]" value="1" %s />',
+            checked(1, $options['enabled'], false)
+        );
+    }
+    
+    public function title_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="text" class="regular-text" id="title" name="nyx_maintenance_option[title]" value="%s" />',
+            esc_attr($options['title'])
+        );
+    }
+    
+    public function description_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<textarea class="large-text" rows="3" id="description" name="nyx_maintenance_option[description]">%s</textarea>',
+            esc_textarea($options['description'])
+        );
+    }
+    
+    public function date_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="text" class="regular-text" id="date" name="nyx_maintenance_option[date]" value="%s" placeholder="YYYY-MM-DD HH:MM:SS" />',
+            esc_attr($options['date'])
+        );
+        echo '<p class="description">Format: YYYY-MM-DD HH:MM:SS (ex: 2025-12-31 23:59:59)</p>';
+    }
+    
+    public function logo_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="text" class="regular-text" id="logo" name="nyx_maintenance_option[logo]" value="%s" />',
+            esc_attr($options['logo'])
+        );
+        echo '<p class="description">URL complète du logo</p>';
+    }
+    
+    public function logo_width_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="number" min="50" max="500" id="logo_width" name="nyx_maintenance_option[logo_width]" value="%s" />',
+            esc_attr($options['logo_width'])
+        );
+    }
+    
+    public function primary_color_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="color" id="primary_color" name="nyx_maintenance_option[primary_color]" value="%s" />',
+            esc_attr($options['primary_color'])
+        );
+    }
+    
+    public function email_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="email" class="regular-text" id="email" name="nyx_maintenance_option[email]" value="%s" />',
+            esc_attr($options['email'])
+        );
+    }
+    
+    public function phone_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="text" class="regular-text" id="phone" name="nyx_maintenance_option[phone]" value="%s" />',
+            esc_attr($options['phone'])
+        );
+    }
+    
+    public function address_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="text" class="regular-text" id="address" name="nyx_maintenance_option[address]" value="%s" />',
+            esc_attr($options['address'])
+        );
+    }
+    
+    public function allowed_ips_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<input type="text" class="large-text" id="allowed_ips" name="nyx_maintenance_option[allowed_ips]" value="%s" />',
+            esc_attr($options['allowed_ips'])
+        );
+        echo '<p class="description">Les adresses IP listées auront accès au site malgré le mode maintenance.</p>';
+    }
+    
+    public function exclude_urls_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        printf(
+            '<textarea class="large-text" rows="3" id="exclude_urls" name="nyx_maintenance_option[exclude_urls]">%s</textarea>',
+            esc_textarea($options['exclude_urls'])
+        );
+        echo '<p class="description">Les URLs qui correspondent à ces chemins (une par ligne) resteront accessibles.</p>';
+    }
+    
+    // Enregistrer les styles
+    public function enqueue_styles() {
+        if ($this->is_maintenance_active()) {
+            wp_enqueue_style('google-font-montserrat', 'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap', array(), null);
+        }
+    }
+    
+    // Vérifier si le mode maintenance est actif pour l'utilisateur actuel
+    private function is_maintenance_active() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        
+        // Si désactivé, retourner false
+        if (!$options['enabled']) {
+            return false;
+        }
+        
+        // Admin connecté, pas de maintenance
+        if (current_user_can('manage_options')) {
+            return false;
+        }
+        
+        // Vérification des IPs autorisées
+        if (!empty($options['allowed_ips'])) {
+            $allowed_ips = array_map('trim', explode(',', $options['allowed_ips']));
+            $user_ip = $this->get_user_ip();
+            
+            if (in_array($user_ip, $allowed_ips)) {
+                return false;
+            }
+        }
+        
+        // Vérification des URLs exclues
+        if (!empty($options['exclude_urls'])) {
+            $current_url = $_SERVER['REQUEST_URI'];
+            $exclude_urls = explode("\n", str_replace("\r", "", $options['exclude_urls']));
+            
+            foreach ($exclude_urls as $url) {
+                $url = trim($url);
+                if (!empty($url) && strpos($current_url, $url) !== false) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+    
+    // Obtenir l'IP de l'utilisateur
+    private function get_user_ip() {
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+            $ip = $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        } else {
+            $ip = $_SERVER['REMOTE_ADDR'];
+        }
+        return $ip;
+    }
+    
+    // Activer le mode maintenance
+    public function maintenance_mode() {
+        if ($this->is_maintenance_active()) {
+            $options = get_option('nyx_maintenance_option', $this->get_default_options());
+            
+            // Définir le statut HTTP
+            status_header(503);
+            header('Retry-After: 3600');
+            
+            // Afficher la page de maintenance
+            $this->display_maintenance_page($options);
+            exit;
+        }
+    }
+    
+    // Afficher la page de maintenance
+    private function display_maintenance_page($options) {
+        // Extraire les options
+        $title = $options['title'];
+        $description = $options['description'];
+        $date = $options['date'];
+        $logo = $options['logo'];
+        $logo_width = $options['logo_width'];
+        $primary_color = $options['primary_color'];
+        $email = $options['email'];
+        $phone = $options['phone'];
+        $address = $options['address'];
+        
+        // Générer la page de maintenance
+        ?>
+        <!DOCTYPE html>
         <html lang="fr">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Nous revenons bientôt - NYX-EI</title>
-            <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
+            <title><?php echo get_bloginfo('name'); ?> - Mode Maintenance</title>
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap">
             <style>
-                body {
-                    background-color: #A6242F;
-                    color: #ffffff;
-                    font-family: "Montserrat", sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
+                * {
                     margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: 'Montserrat', sans-serif;
+                    background-color: #000;
+                    color: #fff;
+                    line-height: 1.6;
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                .container {
+                    width: 100%;
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 20px 0;
+                }
+                
+                .logo {
+                    display: flex;
+                    align-items: center;
+                }
+                
+                .logo img {
+                    max-width: <?php echo esc_attr($logo_width); ?>px;
+                    height: auto;
+                }
+                
+                .contact-info {
+                    text-align: right;
+                    font-size: 14px;
+                }
+                
+                main {
+                    padding: 60px 0;
+                    display: flex;
+                    flex: 1;
+                    flex-direction: column;
+                    justify-content: center;
+                }
+                
+                h1 {
+                    font-size: 56px;
+                    font-weight: 700;
+                    line-height: 1.2;
+                    margin-bottom: 40px;
+                }
+                
+                .countdown-container {
+                    display: flex;
+                    gap: 20px;
+                    margin: 40px 0;
+                }
+                
+                .countdown-box {
                     text-align: center;
                 }
-                .container {
-                    max-width: 600px;
-                    padding: 40px;
-                    background-color: rgba(0, 0, 0, 0.9);
-                    border-radius: 10px;
-                    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-                }
-                .logo {
-                    max-width: 100px;
-                    margin-bottom: 20px;
-                }
-                h1 {
-                    font-size: 2.5em;
+                
+                .countdown-value {
+                    font-size: 48px;
                     font-weight: 700;
-                    margin-bottom: 20px;
                 }
-                p {
-                    font-size: 1.2em;
-                    font-weight: 300;
-                    margin-bottom: 20px;
+                
+                .countdown-separator {
+                    font-size: 48px;
+                    margin: 0 10px;
+                    align-self: flex-start;
                 }
-                .contact {
-                    font-size: 1em;
-                    font-weight: 300;
-                    margin-top: 20px;
+                
+                .countdown-label {
+                    font-size: 14px;
+                    color: #aaa;
+                    margin-top: 10px;
                 }
-                .email {
-                    margin-top: 20px;
-                    font-size: 1em;
-                    font-weight: 300;
+                
+                .description {
+                    max-width: 600px;
+                    font-size: 16px;
+                    line-height: 1.8;
+                    color: #aaa;
+                }
+                
+                .primary-color {
+                    color: <?php echo esc_attr($primary_color); ?>;
+                }
+                
+                .content-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 40px;
+                    align-items: center;
+                }
+                
+                @media (max-width: 768px) {
+                    header {
+                        flex-direction: column;
+                        text-align: center;
+                    }
+                    
+                    .contact-info {
+                        text-align: center;
+                        margin-top: 20px;
+                    }
+                    
+                    .content-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    
+                    h1 {
+                        font-size: 36px;
+                    }
+                    
+                    .countdown-value {
+                        font-size: 32px;
+                    }
+                    
+                    .countdown-separator {
+                        font-size: 32px;
+                    }
                 }
             </style>
         </head>
         <body>
             <div class="container">
-                <img src="' . plugins_url('logo.png', __FILE__) . '" alt="NYX-EI Logo" class="logo">
-                <h1>We Are Coming Soon</h1>
-                <p>Nous croyons fermement que les meilleures solutions viennent de nouvelles perspectives et de repousser les limites conventionnelles.</p>
-                <div class="contact">
-                    <p>B.P 17623 Yaoundé</p>
-                    <p>+237 697 99 15 90</p>
-                </div>
-                <div class="email">Say hello! contact@nyx-ei.tech</div>
+                <header>
+                    <div class="logo">
+                        <?php if (!empty($logo)): ?>
+                            <img src="<?php echo esc_url($logo); ?>" alt="NYX-EI Logo">
+                        <?php else: ?>
+                            <h3>NYX-EI</h3>
+                        <?php endif; ?>
+                    </div>
+                    <div class="contact-info">
+                        Say hello! <?php echo esc_html($email); ?>
+                    </div>
+                </header>
+                
+                <main>
+                    <div class="content-grid">
+                        <div>
+                            <h1><?php echo esc_html($title); ?></h1>
+                            
+                            <?php if (!empty($date)): ?>
+                                <div class="countdown-container">
+                                    <div class="countdown-box">
+                                        <div id="days" class="countdown-value">00</div>
+                                        <div class="countdown-label">Days</div>
+                                    </div>
+                                    <div class="countdown-separator">:</div>
+                                    <div class="countdown-box">
+                                        <div id="hours" class="countdown-value">00</div>
+                                        <div class="countdown-label">Hours</div>
+                                    </div>
+                                    <div class="countdown-separator">:</div>
+                                    <div class="countdown-box">
+                                        <div id="minutes" class="countdown-value">00</div>
+                                        <div class="countdown-label">Minutes</div>
+                                    </div>
+                                    <div class="countdown-separator">:</div>
+                                    <div class="countdown-box">
+                                        <div id="seconds" class="countdown-value">00</div>
+                                        <div class="countdown-label">Seconds</div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <div>
+                            <p class="description"><?php echo esc_html($description); ?></p>
+                            <div style="margin-top: 40px;">
+                                <p><strong>Contact:</strong></p>
+                                <p><?php echo esc_html($address); ?></p>
+                                <p><?php echo esc_html($phone); ?></p>
+                                <p><?php echo esc_html($email); ?></p>
+                            </div>
+                        </div>
+                    </div>
+                </main>
             </div>
+            
+            <?php if (!empty($date)): ?>
+                <script>
+                    // Fonction de compte à rebours
+                    function updateCountdown() {
+                        const targetDate = new Date('<?php echo esc_js($date); ?>').getTime();
+                        const now = new Date().getTime();
+                        const difference = targetDate - now;
+                        
+                        if (difference <= 0) {
+                            document.getElementById('days').innerText = '00';
+                            document.getElementById('hours').innerText = '00';
+                            document.getElementById('minutes').innerText = '00';
+                            document.getElementById('seconds').innerText = '00';
+                            return;
+                        }
+                        
+                        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+                        
+                        document.getElementById('days').innerText = days < 10 ? '0' + days : days;
+                        document.getElementById('hours').innerText = hours < 10 ? '0' + hours : hours;
+                        document.getElementById('minutes').innerText = minutes < 10 ? '0' + minutes : minutes;
+                        document.getElementById('seconds').innerText = seconds < 10 ? '0' + seconds : seconds;
+                    }
+                    
+                    // Mettre à jour toutes les secondes
+                    setInterval(updateCountdown, 1000);
+                    
+                    // Appel initial
+                    updateCountdown();
+                </script>
+            <?php endif; ?>
         </body>
-        </html>';
-        exit;
+        </html>
+        <?php
     }
 }
-add_action('init', 'nyx_ei_maintenance_mode');
+
+// Initialiser le plugin
+new NyxMaintenanceMode();
