@@ -2,7 +2,7 @@
 /*
 Plugin Name: NYX-EI Maintenance
 Description: Active un mode maintenance avec une page personnalisée.
-Version: 1.1
+Version: 1.2
 Author: NYX-EI
 */
 
@@ -18,7 +18,7 @@ function nyx_ei_maintenance_mode() {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Site en Maintenance - NYX-EI</title>
+            <title>Nous revenons bientôt - NYX-EI</title>
             <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
             <script>
                 function updateCountdown() {
@@ -31,11 +31,11 @@ function nyx_ei_maintenance_mode() {
                             document.getElementById("countdown").innerHTML = "Maintenance terminée";
                             return;
                         }
-                        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                        document.getElementById("countdown").innerHTML = `${days}j ${hours}h ${minutes}m ${seconds}s`;
+                        const days = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
+                        const hours = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
+                        const minutes = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+                        const seconds = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
+                        document.getElementById("countdown").innerHTML = `${days} : ${hours} : ${minutes} : ${seconds}`;
                     }, 1000);
                 }
             </script>
@@ -54,45 +54,54 @@ function nyx_ei_maintenance_mode() {
                 }
                 .container {
                     max-width: 600px;
-                    padding: 20px;
-                    background-color: rgba(0, 0, 0, 0.8);
+                    padding: 40px;
+                    background-color: rgba(0, 0, 0, 0.9);
                     border-radius: 10px;
                     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
                 }
                 .logo {
-                    max-width: 150px;
+                    max-width: 100px;
                     margin-bottom: 20px;
                 }
                 h1 {
                     font-size: 2.5em;
+                    font-weight: 700;
                     margin-bottom: 20px;
                 }
                 p {
                     font-size: 1.2em;
+                    font-weight: 300;
                     margin-bottom: 20px;
                 }
                 .contact {
                     font-size: 1em;
+                    font-weight: 300;
                     margin-top: 20px;
                 }
                 .countdown {
-                    font-size: 1.5em;
+                    font-size: 2em;
                     font-weight: bold;
                     margin-top: 20px;
+                    letter-spacing: 3px;
+                }
+                .email {
+                    margin-top: 20px;
+                    font-size: 1em;
+                    font-weight: 300;
                 }
             </style>
         </head>
         <body onload="updateCountdown()">
             <div class="container">
                 <img src="' . plugins_url('logo.png', __FILE__) . '" alt="NYX-EI Logo" class="logo">
-                <h1>Site en Maintenance</h1>
-                <p>Nous effectuons actuellement des travaux de maintenance. Nous serons de retour très bientôt.</p>
-                <div id="countdown" class="countdown"></div>
+                <h1>We Are Coming Soon</h1>
+                <div id="countdown" class="countdown">00 : 00 : 00 : 00</div>
+                <p>Nous croyons fermement que les meilleures solutions viennent de nouvelles perspectives et de repousser les limites conventionnelles.</p>
                 <div class="contact">
                     <p>B.P 17623 Yaoundé</p>
                     <p>+237 697 99 15 90</p>
-                    <p>contact@nyx-ei.tech</p>
                 </div>
+                <div class="email">Say hello! contact@nyx-ei.tech</div>
             </div>
         </body>
         </html>';
