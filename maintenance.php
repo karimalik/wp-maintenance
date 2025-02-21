@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: NYX-EI Maintenance
+ * Plugin Name: NYX-EI Maintenance Mode
  * Plugin URI: https://nyx-ei.tech
  * Description: Un plugin de maintenance élégant pour NYX-EI
  * Version: 1.0
@@ -82,7 +82,8 @@ class NyxMaintenanceMode {
             'phone' => '+237 697 99 15 90',
             'address' => 'B.P 17623 Yaoundé',
             'allowed_ips' => '',
-            'exclude_urls' => ''
+            'exclude_urls' => '',
+            'background_image' => '' // Nouvelle option pour l'image de fond
         );
     }
     
@@ -166,6 +167,15 @@ class NyxMaintenanceMode {
             'nyx_maintenance_setting_section'
         );
         
+        // Ajout du champ pour l'image de fond
+        add_settings_field(
+            'background_image',
+            'Image d\'arrière-plan',
+            array($this, 'background_image_callback'),
+            'nyx-maintenance-admin',
+            'nyx_maintenance_setting_section'
+        );
+        
         add_settings_field(
             'primary_color',
             'Couleur principale',
@@ -232,6 +242,7 @@ class NyxMaintenanceMode {
         $sanitized['address'] = sanitize_text_field($input['address'] ?: $default_options['address']);
         $sanitized['allowed_ips'] = sanitize_text_field($input['allowed_ips']);
         $sanitized['exclude_urls'] = sanitize_textarea_field($input['exclude_urls']);
+        $sanitized['background_image'] = esc_url_raw($input['background_image']); // Sanitize de l'image de fond
         
         return $sanitized;
     }
@@ -294,6 +305,31 @@ class NyxMaintenanceMode {
         } else {
             echo '<div class="logo-preview" style="margin-top: 10px;">';
             echo '<img id="logo_preview" src="" style="max-width: 200px; height: auto; display: none;" />';
+            echo '</div>';
+        }
+        echo '</div>';
+    }
+    
+    // Callback pour l'image de fond
+    public function background_image_callback() {
+        $options = get_option('nyx_maintenance_option', $this->get_default_options());
+        $bg_url = esc_attr($options['background_image']);
+        
+        echo '<div class="bg-upload-container">';
+        printf(
+            '<input type="text" class="regular-text" id="background_image" name="nyx_maintenance_option[background_image]" value="%s" />',
+            $bg_url
+        );
+        echo '<button id="upload_bg_button" class="button">Sélectionner une image</button>';
+        echo '<p class="description">Sélectionnez ou uploadez une image pour l\'arrière-plan (laissez vide pour utiliser le fond noir par défaut)</p>';
+        
+        if (!empty($bg_url)) {
+            echo '<div class="bg-preview" style="margin-top: 10px;">';
+            echo '<img id="bg_preview" src="' . $bg_url . '" style="max-width: 200px; height: auto;" />';
+            echo '</div>';
+        } else {
+            echo '<div class="bg-preview" style="margin-top: 10px;">';
+            echo '<img id="bg_preview" src="" style="max-width: 200px; height: auto; display: none;" />';
             echo '</div>';
         }
         echo '</div>';
@@ -412,11 +448,36 @@ jQuery(document).ready(function($) {
         .open();
     });
     
+    // Gestion de l\'upload de l\'arrière-plan
+    $("#upload_bg_button").on("click", function(e) {
+        e.preventDefault();
+        var custom_uploader = wp.media({
+            title: "Sélectionner une image pour l\'arrière-plan",
+            button: {
+                text: "Utiliser cette image"
+            },
+            multiple: false
+        })
+        .on("select", function() {
+            var attachment = custom_uploader.state().get("selection").first().toJSON();
+            $("#background_image").val(attachment.url);
+            $("#bg_preview").attr("src", attachment.url).show();
+        })
+        .open();
+    });
+    
     // Afficher ou masquer l\'aperçu du logo
     if($("#logo").val()) {
         $("#logo_preview").attr("src", $("#logo").val()).show();
     } else {
         $("#logo_preview").hide();
+    }
+    
+    // Afficher ou masquer l\'aperçu de l\'arrière-plan
+    if($("#background_image").val()) {
+        $("#bg_preview").attr("src", $("#background_image").val()).show();
+    } else {
+        $("#bg_preview").hide();
     }
 });';
             file_put_contents($js_file, $js_content);
@@ -530,6 +591,7 @@ jQuery(document).ready(function($) {
         $email = $options['email'];
         $phone = $options['phone'];
         $address = $options['address'];
+        $background_image = $options['background_image'];
         
         // Générer la page de maintenance
         ?>
@@ -550,6 +612,13 @@ jQuery(document).ready(function($) {
                 body {
                     font-family: 'Montserrat', sans-serif;
                     background-color: #000;
+                    <?php if (!empty($background_image)): ?>
+                    background-image: url('<?php echo esc_url($background_image); ?>');
+                    background-size: cover;
+                    background-position: center;
+                    background-repeat: no-repeat;
+                    background-attachment: fixed;
+                    <?php endif; ?>
                     color: #fff;
                     line-height: 1.6;
                     min-height: 100vh;
@@ -565,6 +634,9 @@ jQuery(document).ready(function($) {
                     flex: 1;
                     display: flex;
                     flex-direction: column;
+                    <?php if (!empty($background_image)): ?>
+                    background-color: rgba(0, 0, 0, 0.7); /* Fond semi-transparent pour l'image */
+                    <?php endif; ?>
                 }
                 
                 header {
@@ -703,11 +775,6 @@ jQuery(document).ready(function($) {
                                     <div class="countdown-box">
                                         <div id="days" class="countdown-value">00</div>
                                         <div class="countdown-label">Days</div>
-                                    </div>
-                                    <div class="countdown-separator">:</div>
-                                    <div class="countdown-box">
-                                        <div id="hours" class="countdown-value">00</div>
-                                        <div class="countdown-label">Hours</div>
                                     </div>
                                     <div class="countdown-separator">:</div>
                                     <div class="countdown-box">
