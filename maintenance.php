@@ -11,7 +11,7 @@ function nyx_ei_maintenance_mode() {
         header($_SERVER["SERVER_PROTOCOL"] . " 503 Service Unavailable");
         header("Retry-After: 3600");
         
-        $end_time = time() + (3 * 24 * 60 * 60); // 3 jours
+        $end_time = time() + (3 * 24 * 60 * 60);
         
         echo '<!DOCTYPE html>
         <html lang="fr">
@@ -41,8 +41,7 @@ function nyx_ei_maintenance_mode() {
             </script>
             <style>
                 body {
-                    background: url("' . plugins_url('background.jpg', __FILE__) . '") no-repeat center center fixed;
-                    background-size: cover;
+                    background-color: #A6242F;
                     color: #ffffff;
                     font-family: "Montserrat", sans-serif;
                     display: flex;
