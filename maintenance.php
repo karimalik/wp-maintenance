@@ -11,8 +11,6 @@ function nyx_ei_maintenance_mode() {
         header($_SERVER["SERVER_PROTOCOL"] . " 503 Service Unavailable");
         header("Retry-After: 3600");
         
-        $end_time = time() + (3 * 24 * 60 * 60);
-        
         echo '<!DOCTYPE html>
         <html lang="fr">
         <head>
@@ -20,25 +18,6 @@ function nyx_ei_maintenance_mode() {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Nous revenons bientôt - NYX-EI</title>
             <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
-            <script>
-                function updateCountdown() {
-                    const endTime = ' . $end_time . ' * 1000;
-                    const interval = setInterval(() => {
-                        const now = new Date().getTime();
-                        const distance = endTime - now;
-                        if (distance < 0) {
-                            clearInterval(interval);
-                            document.getElementById("countdown").innerHTML = "Maintenance terminée";
-                            return;
-                        }
-                        const days = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
-                        const hours = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
-                        const minutes = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
-                        const seconds = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
-                        document.getElementById("countdown").innerHTML = `${days} : ${hours} : ${minutes} : ${seconds}`;
-                    }, 1000);
-                }
-            </script>
             <style>
                 body {
                     background-color: #A6242F;
@@ -77,12 +56,6 @@ function nyx_ei_maintenance_mode() {
                     font-weight: 300;
                     margin-top: 20px;
                 }
-                .countdown {
-                    font-size: 2em;
-                    font-weight: bold;
-                    margin-top: 20px;
-                    letter-spacing: 3px;
-                }
                 .email {
                     margin-top: 20px;
                     font-size: 1em;
@@ -90,11 +63,10 @@ function nyx_ei_maintenance_mode() {
                 }
             </style>
         </head>
-        <body onload="updateCountdown()">
+        <body>
             <div class="container">
                 <img src="' . plugins_url('logo.png', __FILE__) . '" alt="NYX-EI Logo" class="logo">
                 <h1>We Are Coming Soon</h1>
-                <div id="countdown" class="countdown">00 : 00 : 00 : 00</div>
                 <p>Nous croyons fermement que les meilleures solutions viennent de nouvelles perspectives et de repousser les limites conventionnelles.</p>
                 <div class="contact">
                     <p>B.P 17623 Yaoundé</p>
