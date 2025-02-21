@@ -761,7 +761,7 @@ jQuery(document).ready(function($) {
                         <?php endif; ?>
                     </div>
                     <div class="contact-info">
-                        Say hello! <?php echo esc_html($email); ?>
+                        <?php echo esc_html($email); ?>
                     </div>
                 </header>
                 
