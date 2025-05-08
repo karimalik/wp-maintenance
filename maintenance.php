@@ -9,34 +9,27 @@
  * Text Domain: nyx-maintenance
  */
 
-// Si ce fichier est appelé directement, on sort
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// Définir le chemin du plugin
 define('NYX_MAINTENANCE_PATH', plugin_dir_path(__FILE__));
 define('NYX_MAINTENANCE_URL', plugin_dir_url(__FILE__));
 
 class NyxMaintenanceMode {
     
-    // Constructeur
     public function __construct() {
         add_action('admin_menu', array($this, 'add_plugin_page'));
         add_action('admin_init', array($this, 'page_init'));
         add_action('template_redirect', array($this, 'maintenance_mode'));
         
-        // Ajouter le lien "Paramètres" sur la page des plugins
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'add_settings_link'));
         
-        // Enregistrer les styles et scripts
         add_action('wp_enqueue_scripts', array($this, 'enqueue_styles'));
         add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
         
-        // Créer le dossier uploads s'il n'existe pas
         $this->create_upload_directory();
         
-        // Ajout de l'action pour l'upload du logo
         add_action('wp_ajax_nyx_upload_logo', array($this, 'handle_logo_upload'));
     }
     
@@ -50,14 +43,12 @@ class NyxMaintenanceMode {
         }
     }
     
-    // Lien vers paramètres dans la liste des plugins
     public function add_settings_link($links) {
         $settings_link = '<a href="options-general.php?page=nyx-maintenance">' . __('Paramètres', 'nyx-maintenance') . '</a>';
         array_unshift($links, $settings_link);
         return $links;
     }
     
-    // Ajouter la page de menu
     public function add_plugin_page() {
         add_options_page(
             'Mode Maintenance NYX-EI', 
@@ -68,7 +59,6 @@ class NyxMaintenanceMode {
         );
     }
     
-    // Options par défaut
     private function get_default_options() {
         return array(
             'enabled' => 0,
@@ -83,11 +73,10 @@ class NyxMaintenanceMode {
             'address' => 'B.P 17623 Yaoundé',
             'allowed_ips' => '',
             'exclude_urls' => '',
-            'background_image' => '' // Nouvelle option pour l'image de fond
+            'background_image' => '' 
         );
     }
     
-    // Créer la page d'administration
     public function create_admin_page() {
         $options = get_option('nyx_maintenance_option', $this->get_default_options());
         ?>
@@ -104,7 +93,6 @@ class NyxMaintenanceMode {
         <?php
     }
     
-    // Initialiser les paramètres
     public function page_init() {
         register_setting(
             'nyx_maintenance_option_group',
@@ -167,7 +155,6 @@ class NyxMaintenanceMode {
             'nyx_maintenance_setting_section'
         );
         
-        // Ajout du champ pour l'image de fond
         add_settings_field(
             'background_image',
             'Image d\'arrière-plan',
@@ -225,7 +212,6 @@ class NyxMaintenanceMode {
         );
     }
     
-    // Sanitize des données
     public function sanitize($input) {
         $sanitized = array();
         $default_options = $this->get_default_options();
@@ -247,12 +233,10 @@ class NyxMaintenanceMode {
         return $sanitized;
     }
     
-    // Info Section
     public function section_info() {
         echo 'Configurez le mode maintenance de votre site';
     }
-    
-    // Callbacks des champs
+
     public function enabled_callback() {
         $options = get_option('nyx_maintenance_option', $this->get_default_options());
         printf(
@@ -310,7 +294,6 @@ class NyxMaintenanceMode {
         echo '</div>';
     }
     
-    // Callback pour l'image de fond
     public function background_image_callback() {
         $options = get_option('nyx_maintenance_option', $this->get_default_options());
         $bg_url = esc_attr($options['background_image']);
@@ -393,14 +376,12 @@ class NyxMaintenanceMode {
         echo '<p class="description">Les URLs qui correspondent à ces chemins (une par ligne) resteront accessibles.</p>';
     }
     
-    // Enregistrer les styles
     public function enqueue_styles() {
         if ($this->is_maintenance_active()) {
             wp_enqueue_style('google-font-montserrat', 'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap', array(), null);
         }
     }
     
-    // Enregistrer les scripts et styles d'admin
     public function admin_enqueue_scripts($hook) {
         if ($hook === 'settings_page_nyx-maintenance') {
             wp_enqueue_media();
@@ -420,7 +401,6 @@ class NyxMaintenanceMode {
         }
     }
     
-    // Créer le fichier JavaScript d'administration
     private function create_admin_js_file() {
         $js_file = NYX_MAINTENANCE_PATH . 'admin.js';
         
@@ -484,7 +464,6 @@ jQuery(document).ready(function($) {
         }
     }
     
-    // Gérer l'upload du logo
     public function handle_logo_upload() {
         check_ajax_referer('nyx_maintenance_nonce', 'security');
         
@@ -512,21 +491,17 @@ jQuery(document).ready(function($) {
         }
     }
     
-    // Vérifier si le mode maintenance est actif pour l'utilisateur actuel
     private function is_maintenance_active() {
         $options = get_option('nyx_maintenance_option', $this->get_default_options());
         
-        // Si désactivé, retourner false
         if (!$options['enabled']) {
             return false;
         }
         
-        // Admin connecté, pas de maintenance
         if (current_user_can('manage_options')) {
             return false;
         }
-        
-        // Vérification des IPs autorisées
+
         if (!empty($options['allowed_ips'])) {
             $allowed_ips = array_map('trim', explode(',', $options['allowed_ips']));
             $user_ip = $this->get_user_ip();
@@ -536,7 +511,6 @@ jQuery(document).ready(function($) {
             }
         }
         
-        // Vérification des URLs exclues
         if (!empty($options['exclude_urls'])) {
             $current_url = $_SERVER['REQUEST_URI'];
             $exclude_urls = explode("\n", str_replace("\r", "", $options['exclude_urls']));
